@@ -14,9 +14,11 @@ Python 3.11. Training runs on CPU by default (`--device cpu` throughout) -- CPU 
 empirically faster than GPU for this workload's model/batch sizes. Pass `--device cuda` to
 override.
 
-## Quick check
+## Quick check (NOT the paper's results -- just confirms the install works)
 
-Confirm the install works with one small run (~30 seconds):
+This is a ~30-second sanity check only, at a fraction of the real step budget. It exists to
+confirm your environment is set up correctly before committing to a full run -- it does not
+train to convergence and will not reproduce the paper's numbers by itself.
 
 ```
 python -m vosr.train --env SafetyPointGoal1-v0 --method sac_lag_vosr --seed 0 \
@@ -26,21 +28,48 @@ python -m vosr.train --env SafetyPointGoal1-v0 --method sac_lag_vosr --seed 0 \
 
 This should finish without error and create `runs/SafetyPointGoal1-v0__sac_lag_vosr__seed0.csv`.
 
-## Reproducing the main results (15 methods x 10 environments x 3 seeds)
+## Full training (reproduces the paper's reported results)
 
 ```
 python -m vosr.reproduce_all
 ```
 
-Single entry point for the full 450-run grid. Prints an estimated compute/wall-clock time
+This is the actual full run: 15 methods x 10 environments x 3 seeds = 450 runs, each trained
+to the real step budget below (not the 400-step quick check above), the same command used to
+produce every number and figure in the paper. It prints an estimated compute/wall-clock time
 before starting (parallelism defaults to 24 concurrent runs; set `VOSR_N_PARALLEL` to change
-it). Writes to `runs/` by default (`VOSR_LOG_DIR` to change it); skips runs already present
-so it's safe to resume after an interruption (`VOSR_SKIP_EXISTING=0` forces a full rebuild).
+it), writes to `runs/` by default (`VOSR_LOG_DIR` to change it), and skips runs already
+present so it's safe to resume after an interruption (`VOSR_SKIP_EXISTING=0` forces a full
+rebuild).
 
-A single run can also be launched directly -- see the Quick check command above, with
-`--total_steps` / `--eval_interval` set from the table in `vosr/reproduce_all.py`
-(`TARGET_STEPS`, `EVAL_INTERVAL`). `--method` is any of the 15 keys in
-`vosr/train.py`'s `METHOD_TO_OPT_SAMPLER` (3 base optimizers x 5 samplers).
+Per-environment step budget and evaluation interval (from `vosr/reproduce_all.py`,
+`TARGET_STEPS` / `EVAL_INTERVAL` -- also the values to pass to a single `vosr.train` run if
+launching one environment/method by hand instead of the full grid):
+
+| Environment | Total steps | Eval interval |
+|---|---|---|
+| SafetyPointGoal1-v0 | 77,500 | 2,500 |
+| SafetyPointCircle1-v0 | 95,000 | 2,500 |
+| SafetyPointButton1-v0 | 70,000 | 3,500 |
+| SafetyPointPush1-v0 | 85,000 | 4,000 |
+| SafetyAntVelocity-v1 | 132,000 | 6,000 |
+| SafetyHalfCheetahVelocity-v1 | 138,000 | 6,000 |
+| SafetyHopperVelocity-v1 | 144,000 | 6,000 |
+| SafetyWalker2dVelocity-v1 | 138,000 | 6,000 |
+| SafetyHumanoidVelocity-v1 | 120,000 | 6,000 |
+| SafetySwimmerVelocity-v1 | 120,000 | 6,000 |
+
+`--method` is any of the 15 keys in `vosr/train.py`'s `METHOD_TO_OPT_SAMPLER` (3 base
+optimizers -- `sac_lag`, `crpo`, `pcrpo` -- x 5 samplers -- `uniform`, `td_per`, `safety_per`,
+`uncertainty_per`, `vosr`). `--eval_episodes 3`, `--start_steps 1000`, `--train_every 4`,
+`--device cpu` throughout, matching `vosr.reproduce_all`'s own launch settings exactly.
+
+Full training-length runs take substantially longer than the quick check. `vosr.reproduce_all`
+prints its own estimate at launch (from measured/estimated per-environment throughput in
+`vosr/reproduce_all.py`'s `RATES` table); as a reference point, the complete 450-run grid is
+roughly 310 total compute-hours, i.e. about 13 hours wall clock at the default 24-way
+parallelism on a multi-core CPU machine (proportionally longer with less parallelism, e.g.
+~39 hours at 8-way).
 
 ## Tables
 
