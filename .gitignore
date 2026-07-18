@@ -1,0 +1,24 @@
+# Generated data and outputs -- not part of the code release, regenerate via the scripts in README.md
+runs/
+figures/
+figures_variance/
+figures_variance_full/
+final_figures/
+variance_diagnostic_logs/
+variance_diagnostic_logs_full/
+ablation_logs/
+ablation_logs_2/
+results/
+*.stdout.log
+manifest*.jsonl
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# OS/editor
+.DS_Store
+.vscode/
+.idea/
